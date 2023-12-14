@@ -1,4 +1,4 @@
--- Advent of Code day 10 part 1
+-- Advent of Code day 10 part 2
 -- local inspect = require("inspect")
 
 -- debug function
