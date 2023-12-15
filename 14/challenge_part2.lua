@@ -3,7 +3,7 @@ local inspect = require("inspect")
 
 local input_file = "input.txt"
 -- debug function
-local debug = true
+local debug = false
 local function logd(...)
   if debug then
     print(...)
@@ -84,15 +84,6 @@ local function collapse_south(cols)
   return out
 end
 
--- join all the rows in a table into a single string
-local function join_rows(rows)
-  local str = ""
-  for _, row in ipairs(rows) do
-    str = str .. row
-  end
-  return str
-end
-
 -- cycle order: north, west, south, east
 local function collapse_west(cols)
   local rows = transpose(cols)
@@ -104,13 +95,20 @@ local function collapse_east(cols)
   return transpose(collapse_south(rows))
 end
 
+-- join all the rows in a table into a single string for an easy memoization key
+-- We could just as easily have done some kind of hash, but we don't have
+-- constraints that would require that.
+local function join_rows(rows)
+  local str = ""
+  for _, row in ipairs(rows) do
+    str = str .. row
+  end
+  return str
+end
+
 local cycle_results = {}
 local function cycle(cols, idx)
   local key = join_rows(cols)
-  if cycle_results[key] then
-    logd("Cycle detected at " .. idx .. " (previous " .. cycle_results[key].idx .. ")")
-    return cycle_results[key].cols
-  end
   local result = collapse_north(cols)
   result = collapse_west(result)
   result = collapse_south(result)
@@ -121,33 +119,49 @@ end
 
 logd(inspect(lines))
 
--- convert columns to a row-grid string
-local function stringify(cols)
-  local str = ""
-  for _, row in ipairs(transpose(cols)) do
-    str = str .. row .. "\n"
-  end
-  return str
-end
-
--- from testing, I know that the input I was given cycles at index 117, which
--- matches index 82. Subsequent cycles then loop in that 82..117 interval
+-- To avoid running cycle() a billion times, we look for a loop: a point where
+-- the cycle repeats itself. Subsequent cycles then loop in that interval
 -- forever. So I know what the result is at one billion with a bit of
 -- arithmetic:
--- ======<82>======<116>
---         ^         |
---         L=========J
--- (117 - 82) = 35
--- (1000000000 - 82) % 35 = 8
--- 8 + 82 = 90
-for i=1, 90 do
+-- ======<START>======<END>
+--         ^            |
+--         L============J
+-- (END - START) = CYCLE_SIZE
+-- (1000000000 - START) % CYCLE_SIZE = CYCLE_POSITION
+-- CYCLE_POSITION + START = CYCLE_RESULT
+local has_cycle = false
+local i=1
+local iterations = 1000000000
+local iteration_number
+while not has_cycle do -- look for the cycle
   columns = cycle(columns, i)
+  i = i + 1
+  local cycle_check = cycle_results[join_rows(columns)]
+  if cycle_check then -- found it
+    logd("Cycle detected at " .. i)
+    local cycle_size = i - cycle_check.idx
+    iteration_number = ((iterations - cycle_check.idx) % cycle_size) + cycle_check.idx
+    has_cycle = true
+  end
 end
 
+-- find the cycle result at iteration number so we don't have do do
+-- CYCLE_POSITION iterations again
+for k, v in pairs(cycle_results) do
+  if v.idx == iteration_number then
+    columns = v.cols
+    break
+  end
+end
+
+-- now weight the result. We just use a regex to count Os in each row, and
+-- multiply that count by the row weight (1 = 10, 2 = 9, 3 = 8, etc).
 local rows = transpose(columns)
 local weight = 0
-for i, row in ipairs(rows) do
+for r, row in ipairs(rows) do
   local _, count = row:gsub("O", "O")
-  weight = weight + ((1 + total_rows - i) * count)
+  local additional_weight = ((1 + total_rows - r) * count)
+  weight = weight + additional_weight
 end
+
 print("Part 2 result: " .. weight)
