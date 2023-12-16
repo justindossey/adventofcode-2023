@@ -1,4 +1,4 @@
--- Advent of Code day 15 part 1
+-- Advent of Code day 16 part 1
 local inspect = require("inspect")
 
 local input_file = "input.txt"
