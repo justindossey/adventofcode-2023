@@ -2,6 +2,7 @@
 local inspect = require("inspect")
 
 local input_file = "example1.txt"
+local step_target = 6
 -- debug function
 local debug = true
 local function logd(...)
@@ -31,13 +32,8 @@ end
 local function Node(y, x)
   local self = { y = y, x = x, neighbors = {} }
 
-  function self.touch(step_target)
-    self.step_target = step_target
+  function self.touch()
     self.touched = true
-  end
-
-  function self.get_step_target()
-    return self.step_target or "."
   end
 
   function self.is_touched()
@@ -108,54 +104,43 @@ end
 
 -- function to walk the graph and count how many garden plots are touched in 64
 -- steps
-local function walk_graph(current_plot, step_target)
-  local steps = 0
-  step_target = step_target or 64
-  while steps <= step_target do
-    logd("Step "..steps.." Processing plot: "..current_plot.y..", "..current_plot.x)
-    logd(step_target .." steps remaining")
-    current_plot.touch(step_target)
-    steps = steps + 1
-    for i, neighbor in ipairs(current_plot.neighbors) do
+local step_queue = {}
+local function walk_graph(start_node)
+  table.insert(step_queue, {node=start_node, target=step_target})
+  while #step_queue > 0 do
+    local message = table.remove(step_queue, 1)
+    local node = message.node
+    local target = message.target
+    logd("Step queue size: "..#step_queue)
+    logd(target.." Processing plot: "..node.y..", "..node.x)
+    if target <= 0 then
+      logd("  Target reached")
+      return
+    end
+    for i, neighbor in ipairs(node.neighbors) do
       logd("  Neighbor: "..neighbor.y..", "..neighbor.x)
-      if not neighbor.is_touched() then
-        logd("    Not touched, walking")
-        walk_graph(neighbor, step_target - 1)
-      end
+      table.insert(step_queue, {node=neighbor, target=target-1})
     end
   end
 end
 
--- function to count how many garden plots are touched
-local function count_touched()
-  local touched = 0
-  for i, row in pairs(garden_plots) do
-    for j, plot in pairs(row) do
-      if plot.is_touched() and plot.get_step_target() % 2 == 0 then
-        touched = touched + 1
-      end
+-- function to count the number of unique nodes in the step queue
+local function count_unique_in_step_queue()
+  local unique = {}
+  for i, message in ipairs(step_queue) do
+    local node = message.node
+    if not unique[node] then
+      unique[node] = true
     end
   end
-  return touched
-end
-
--- function to print the grid.
-local function print_grid(lines)
-  for i=1,#lines do
-    for j=1,#lines[i] do
-      if garden_plots[i] and garden_plots[i][j] then
-        io.write(garden_plots[i][j].get_step_target())
-      else
-        io.write(lines[i]:sub(j, j))
-      end
-    end
-    print()
+  local count = 0
+  for node, _ in pairs(unique) do
+    count = count + 1
   end
+  return count
 end
 
-local lines = readFile(input_file)
-parse_input(lines)
+parse_input(readFile(input_file))
 link_neighbors()
-walk_graph(find_start(), 6)
-print_grid(lines)
-print("Part 1 answer: "..count_touched())
+walk_graph(find_start())
+print("Part 1 answer: "..count_unique_in_step_queue())
