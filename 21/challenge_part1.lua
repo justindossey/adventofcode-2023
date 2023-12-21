@@ -1,8 +1,8 @@
 -- Advent of Code day 21 part 1
 local inspect = require("inspect")
 
-local input_file = "example1.txt"
-local step_target = 6
+local input_file = "input.txt"
+local step_target = 64
 -- debug function
 local debug = true
 local function logd(...)
@@ -105,23 +105,27 @@ end
 -- function to walk the graph and count how many garden plots are touched in 64
 -- steps
 local step_queue = {}
-local function walk_graph(start_node)
-  table.insert(step_queue, {node=start_node, target=step_target})
-  while #step_queue > 0 do
-    local message = table.remove(step_queue, 1)
-    local node = message.node
-    local target = message.target
-    logd("Step queue size: "..#step_queue)
-    logd(target.." Processing plot: "..node.y..", "..node.x)
-    if target <= 0 then
-      logd("  Target reached")
-      return
-    end
-    for i, neighbor in ipairs(node.neighbors) do
-      logd("  Neighbor: "..neighbor.y..", "..neighbor.x)
-      table.insert(step_queue, {node=neighbor, target=target-1})
+local function walk_graph(start_node, steps)
+  -- table.insert(step_queue, {node=start_node, target=step_target})
+  step_queue[1] = step_queue[1] or {}
+  step_queue[1][start_node] = true
+  for step=1, steps do
+    logd(step)
+    for node, _ in pairs(step_queue[step]) do
+      step_queue[step][node] = nil
+      logd(" Processing plot: "..node.y..", "..node.x)
+      step_queue[step + 1] = step_queue[step + 1] or {}
+      for i, neighbor in ipairs(node.neighbors) do
+        step_queue[step+1][neighbor] = true
+        logd("  Neighbor: "..neighbor.y..", "..neighbor.x)
+      end
     end
   end
+  local count = 0
+  for j, _ in pairs(step_queue[steps + 1]) do
+    count = count + 1
+  end
+  print("Queue size: "..count)
 end
 
 -- function to count the number of unique nodes in the step queue
@@ -142,5 +146,5 @@ end
 
 parse_input(readFile(input_file))
 link_neighbors()
-walk_graph(find_start())
-print("Part 1 answer: "..count_unique_in_step_queue())
+walk_graph(find_start(), step_target)
+-- print("Part 1 answer: "..count_unique_in_step_queue())
