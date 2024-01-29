@@ -31,7 +31,7 @@ jobs:
       - name: reference a variable
         run: echo "TEST_VAR is $TEST_VAR"
         env:
-          TEST_VAR: ${{ vars.TEST_VAR }}
+          TEST_VAR: ${{ env.TEST_VAR }}
 
       # Runs a set of commands using the runners shell
       - name: Run a multi-line script
